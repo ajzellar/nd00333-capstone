@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+from azureml.data.dataset_factory import TabularDatasetFactory
 import argparse
 
 
@@ -26,7 +27,15 @@ def prep_data(df : DataFrame):
 
   # standardize numerical features
   num_cols = [x for x in df.columns if df[x].dtype != 'object']
-  df[num_cols] = StandardScaler().fit_transform(df[num_cols])
+  s_scaler = StandardScaler()
+  s_scaler.fit(df[num_cols])
+
+  # Print mean and scaler for use in inference
+  mean_list = [float(x) for x in s_scaler.mean_]
+  scale_list = [float(x) for x in s_scaler.scale_]
+  print(mean_list)
+  print(scale_list)
+  df[num_cols] = s_scaler.transform(df[num_cols])
 
   # Find category type columns
   obj_columns = list()
@@ -37,10 +46,18 @@ def prep_data(df : DataFrame):
       obj_columns.append(col)
     else:
       non_obj_columns.append(col)
-
+  # One Hot Encode categories
   X_out = pd.get_dummies(df[obj_columns])
   X_out[non_obj_columns] = df[non_obj_columns]
+  # print(X_out.head())
+  # print(X_out.info())
   return X_out, y_out
+
+def get_dataset():
+  github_path = "https://raw.githubusercontent.com/ajzellar/nd00333-capstone/master/salary.csv"
+  dataset = TabularDatasetFactory.from_delimited_files(path=github_path)
+  return dataset.to_pandas_dataframe()
+
 
 def main():
   # Add arguments to script
@@ -50,11 +67,10 @@ def main():
   args = parser.parse_args()
 
   run = Run.get_context()
-  run.log("Regularization Strength:", np.float(args.C))
+  run.log("Regularization Strength:", np.float64(args.C))
   run.log("Max iterations:", np.int(args.max_iter))
 
-  file_path = "salary.csv"
-  df = pd.read_csv(file_path)
+  df = get_dataset()
   X, y = prep_data(df)
   X_train, X_test, y_train, y_test = train_test_split(X, y , test_size=0.2)
 
@@ -64,7 +80,7 @@ def main():
 
   outputs_dir = 'outputs'
   os.makedirs(outputs_dir, exist_ok=True)
-  output_model = os.path.join(outputs_dir, "{}_model.joblib".format(run.id))
+  output_model = os.path.join(outputs_dir, "model.joblib".format(run.id))
   joblib.dump(model, output_model)
 
 if __name__ == '__main__':

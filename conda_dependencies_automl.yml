@@ -1,0 +1,15 @@
+dependencies:
+  - python=3.8.5
+  - scikit-learn
+  - numpy
+  - pandas
+  - joblib
+  - py-xgboost
+  - pip:
+    - azureml-defaults
+    - azureml-train-core
+    - azureml-train-automl
+    - azureml-train-automl-client
+    - azureml-automl-core
+    - azureml-automl-runtime
+    - azureml-core
